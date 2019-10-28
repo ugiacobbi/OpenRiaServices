@@ -32,20 +32,20 @@ This is mostly a performance and feature update.
 It does not contain any new breaking changes since preiew 1
 
 ### Client
-* Cache *ChannelFactories* large performance improvements (#184)
+
+* Cache *ChannelFactories* for large performance improvements (#184)
 
 ### Code generation
 
 * Code generation now works for *netstandard* and *netcoreapp* (#199, #201)
 * Fix error messages about incompatible Target frameworks when TargetFramework differs between client and server. (#188)
-* Fix potential race condition when configuring endpoint authentication. (#196)
-
 ### Server
 
-* Reduce per request allocations (#197)
-* Improve Perf for Query and Invoke where validation is not required (#186)
 * *Significant* performance and memory usage improvemens for serialization (#189)
+* Improve Perf for Query and Invoke where validation is not required (#186)
+* Reduce per request allocations (#197)
 * Small improvements in Task To APM wrapper for async completing operations
+* Fix potential race condition when configuring endpoint authentication. (#196)
 
 ### Other
 
