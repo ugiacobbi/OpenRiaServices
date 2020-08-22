@@ -2,13 +2,15 @@
 
   <PropertyGroup>
     <VersionPrefix>4.0.0</VersionPrefix>
-    <TargetFrameworks>net46;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net46</TargetFrameworks>
     <PackageTags>WCF;RIA;Services;RIAServices;Silverlight;OpenRiaServices</PackageTags>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+    <PackageReference Include="OpenSilver" Version="1.0.0-alpha-007" />
     <PackageReference Include="System.ServiceModel.Http" Version="4.6.0" />
   </ItemGroup>
 
@@ -45,6 +47,15 @@
     <Compile Remove="..\..\OpenRiaServices.DomainServices.Hosting\Framework\Services\Behaviors\WebHttpQueryStringConverter.cs" />
     <Compile Remove="..\..\OpenRiaServices.DomainServices.hosting\framework\services\messageencoders\PoxBinaryMessageEncodingBindingElement.cs" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <Compile Remove="Data\WebDomainClient.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net46'">
+    <Compile Remove="Data\WebDomainClient_OS.cs" />
+  </ItemGroup>
+  
   <ItemGroup>
     <ProjectReference Include="..\..\OpenRiaServices.DomainServices.Client\Framework\OpenRiaServices.DomainServices.Client.csproj" />
   </ItemGroup>

@@ -1,0 +1,529 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
+using System.Reflection;
+using System.ServiceModel;
+using System.ServiceModel.Channels;
+using System.ServiceModel.Description;
+using OpenRiaServices.DomainServices.Client.Web;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Windows;
+using System.Runtime.CompilerServices;
+using System.Net;
+
+#if SILVERLIGHT
+using System.Windows;
+#endif
+
+namespace OpenRiaServices.DomainServices.Client
+{
+    /// <summary>
+    /// Default <see cref="DomainClient"/> implementation using WCF
+    /// </summary>
+    /// <typeparam name="TContract">The contract type.</typeparam>
+    public class WebDomainClient<TContract> : DomainClient where TContract : class
+    {
+        internal const string QueryPropertyName = "DomainServiceQuery";
+        internal const string IncludeTotalCountPropertyName = "DomainServiceIncludeTotalCount";
+
+        private ChannelFactory<TContract> _channelFactory;
+        private IReadOnlyList<Type> _knownTypes;
+        private Uri _serviceUri;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WebDomainClient&lt;TContract&gt;"/> class.
+        /// </summary>
+        /// <param name="serviceUri">The domain service Uri</param>
+        /// <exception cref="ArgumentNullException"> is thrown if <paramref name="serviceUri"/>
+        /// is null.
+        /// </exception>
+        internal WebDomainClient(Uri serviceUri)
+            : this(serviceUri, /* usesHttps */ false, CreateDefaultDomainClientFactory())
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WebDomainClient&lt;TContract&gt;"/> class.
+        /// </summary>
+        /// <param name="serviceUri">The domain service Uri</param>
+        /// <param name="usesHttps">A value indicating whether the client should contact
+        /// the service using an HTTP or HTTPS scheme.
+        /// </param>
+        /// <exception cref="ArgumentNullException"> is thrown if <paramref name="serviceUri"/>
+        /// is null.
+        /// </exception>
+        /// <exception cref="ArgumentException"> is thrown if <paramref name="serviceUri"/>
+        /// is absolute and <paramref name="usesHttps"/> is true.
+        /// </exception>
+        internal WebDomainClient(Uri serviceUri, bool usesHttps)
+            : this(serviceUri, usesHttps, CreateDefaultDomainClientFactory())
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WebDomainClient&lt;TContract&gt;"/> class.
+        /// </summary>
+        /// <param name="serviceUri">The domain service Uri</param>
+        /// <param name="usesHttps">A value indicating whether the client should contact
+        /// the service using an HTTP or HTTPS scheme.
+        /// </param>
+        /// <param name="domainClientFactory">The domain client factory that creates channels to communicate with the server.</param>
+        /// <exception cref="ArgumentNullException"> is thrown if <paramref name="serviceUri"/>
+        /// is null.
+        /// </exception>
+        /// <exception cref="ArgumentException"> is thrown if <paramref name="serviceUri"/>
+        /// is absolute and <paramref name="usesHttps"/> is true.
+        /// </exception>
+        public WebDomainClient(Uri serviceUri, bool usesHttps, WcfDomainClientFactory domainClientFactory)
+        {
+            if (serviceUri == null)
+            {
+                throw new ArgumentNullException(nameof(serviceUri));
+            }
+
+            if (domainClientFactory == null)
+                throw new ArgumentNullException(nameof(domainClientFactory));
+
+#if !SILVERLIGHT
+            if (!serviceUri.IsAbsoluteUri)
+            {
+                // Relative URIs currently only supported on Silverlight
+                throw new ArgumentException(Resource.WebDomainClient_InvalidServiceUri, nameof(serviceUri));
+            }
+#endif
+
+            this._serviceUri = serviceUri;
+            this.UsesHttps = usesHttps;
+            this.WebDomainClientFactory = domainClientFactory;
+
+#if SILVERLIGHT
+            // The domain client should not be initialized at design time
+            if (!System.ComponentModel.DesignerProperties.IsInDesignTool)
+            {
+                this.Initialize();
+            }
+#endif
+        }
+
+        private static WcfDomainClientFactory CreateDefaultDomainClientFactory()
+        {
+
+#if NETSTANDARD
+            return new SoapDomainClientFactory();
+#else
+            return new WebDomainClientFactory();
+#endif
+        }
+
+        /// <summary>
+        /// Gets the absolute path to the domain service.
+        /// </summary>
+        /// <remarks>
+        /// The value returned is either the absolute Uri passed into the constructor, or
+        /// an absolute Uri constructed from the relative Uri passed into the constructor.
+        /// Relative Uris will be made absolute using the Application Host source.
+        /// </remarks>
+        public Uri ServiceUri
+        {
+            get
+            {
+                // Should this bug be preserved?
+                return this._channelFactory?.Endpoint.Address.Uri ?? this._serviceUri;
+            }
+        }
+
+        /// <summary>
+        /// Gets a value that indicates whether the <see cref="DomainClient"/> supports cancellation.
+        /// </summary>
+        public override bool SupportsCancellation => true;
+
+        /// <summary>
+        /// Gets whether a secure connection should be used.
+        /// </summary>
+        public bool UsesHttps { get; }
+
+        /// <summary>
+        /// Gets the <see cref="WcfDomainClientFactory"/> used to create this instance, with fallback to
+        /// a new <see cref="WebDomainClientFactory"/> in case it was created manually without using a DomainClientFactory.
+        /// </summary>
+        private WcfDomainClientFactory WebDomainClientFactory { get; }
+
+        /// <summary>
+        /// Gets the list of known types.
+        /// </summary>
+        internal IReadOnlyList<Type> KnownTypes
+        {
+            get
+            {
+                if (this._knownTypes == null)
+                {
+                    // KnownTypes is the set of all types we'll need to serialize,
+                    // which is the union of the entity types and the framework
+                    // message types
+                    List<Type> types = this.EntityTypes.ToList();
+                    types.Add(typeof(QueryResult));
+                    types.Add(typeof(DomainServiceFault));
+                    types.Add(typeof(ChangeSetEntry));
+                    types.Add(typeof(EntityOperationType));
+                    types.Add(typeof(ValidationResultInfo));
+
+                    this._knownTypes = types;
+                }
+                return this._knownTypes;
+            }
+        }
+
+        /// <summary>
+        /// Gets the channel factory that is used to create channels for communication 
+        /// with the server.
+        /// </summary>
+        public ChannelFactory<TContract> ChannelFactory
+        {
+            get
+            {
+#if SILVERLIGHT
+                // Initialization prepares the client for use and will fail at design time
+                if (System.ComponentModel.DesignerProperties.IsInDesignTool)
+                {
+                    throw new InvalidOperationException("Domain operations cannot be started at design time.");
+                }
+                this.Initialize();
+#endif
+                if (this._channelFactory == null)
+                {
+                    this._channelFactory = WebDomainClientFactory.CreateChannelFactory<TContract>(_serviceUri, UsesHttps, this);
+                }
+
+                return this._channelFactory;
+            }
+        }
+
+#if SILVERLIGHT
+        /// <summary>
+        /// Initializes this domain client
+        /// </summary>
+        /// <exception cref="InvalidOperationException"> is thrown if the current application
+        /// or its host are <c>null</c>.
+        /// </exception>
+        private void Initialize()
+        {
+            this.ComposeAbsoluteServiceUri();
+        }
+#endif
+
+        /// <summary>
+        /// Method called by the framework to begin an asynchronous query operation
+        /// </summary>
+        /// <param name="query">The query to invoke.</param>
+        /// <param name="cancellationToken"><see cref="CancellationToken"/> to be used for requesting cancellation</param>
+        /// <returns>The results returned by the query.</returns>
+        /// <exception cref="InvalidOperationException">The specified query does not exist.</exception>
+        protected override Task<QueryCompletedResult> QueryAsyncCore(EntityQuery query, CancellationToken cancellationToken)
+        {
+            return CallServiceOperation<QueryCompletedResult>(query.QueryName,
+                query.Parameters,
+                (asyncResult) =>
+                {
+                    IEnumerable<ValidationResult> validationErrors = null;
+                    QueryResult returnValue = null;
+                    try
+                    {
+                        returnValue = (QueryResult)EndServiceOperationCall(asyncResult, this.ChannelFactory.Endpoint.Address.Uri.AbsoluteUri);
+                    }
+                    catch (FaultException<DomainServiceFault> fe)
+                    {
+                        if (fe.Detail.OperationErrors != null)
+                        {
+                            validationErrors = fe.Detail.GetValidationErrors();
+                        }
+                        else
+                        {
+                            throw WebDomainClient<TContract>.GetExceptionFromServiceFault(fe.Detail);
+                        }
+                    }
+
+                    if (returnValue != null)
+                    {
+                        return new QueryCompletedResult(
+                            returnValue.GetRootResults().Cast<Entity>(),
+                            returnValue.GetIncludedResults().Cast<Entity>(),
+                            returnValue.TotalCount,
+                            Enumerable.Empty<ValidationResult>());
+                    }
+                    else
+                    {
+                        return new QueryCompletedResult(
+                            Enumerable.Empty<Entity>(),
+                            Enumerable.Empty<Entity>(),
+                            /* totalCount */ 0,
+                            validationErrors ?? Enumerable.Empty<ValidationResult>());
+                    }
+                }
+            , cancellationToken);
+        }
+
+        private static object InvokeBeginMethod(MethodInfo method, string address, IDictionary<string, object> parameters)
+        {
+            return INTERNAL_WebMethodsCaller.BeginCallWebMethod<TContract>(
+                address,
+                method.Name.Substring(5), // skips "Begin"
+                null,
+                parameters,
+                "1.1");
+        }
+
+        private static object InvokeEndMethod(MethodInfo method, string address, IDictionary<string, object> parameters)
+        {
+            return INTERNAL_WebMethodsCaller.EndCallWebMethod<TContract>(
+                address,
+                method.Name.Substring(3), // skips "End"
+                method.ReturnType,
+                parameters,
+                "1.1");
+        }
+
+        /// <summary>
+        /// Submit the specified <see cref="EntityChangeSet"/> to the DomainService, with the results of the operation
+        /// being returned on the SubmitCompleted event args.
+        /// </summary>
+        /// <param name="changeSet">The changeset to submit. If the changeset is empty, an <see cref="InvalidOperationException"/> will
+        /// be thrown.</param>
+        /// <param name="cancellationToken"><see cref="CancellationToken"/> to be used for requesting cancellation</param>
+        /// <returns>The results returned by the submit request.</returns>
+        /// <exception cref="InvalidOperationException">The changeset is empty.</exception>
+        protected override Task<SubmitCompletedResult> SubmitAsyncCore(EntityChangeSet changeSet, CancellationToken cancellationToken)
+        {
+            IEnumerable<ChangeSetEntry> submitOperations = changeSet.GetChangeSetEntries();
+
+            return CallServiceOperation<SubmitCompletedResult>("SubmitChanges",
+                 new Dictionary<string, object>()
+                 {
+                     {"changeSet", submitOperations}
+                 },
+                 (asyncResult) =>
+                 {
+                     try
+                     {
+                         var returnValue = (IEnumerable<ChangeSetEntry>)EndServiceOperationCall(asyncResult,
+                             this.ChannelFactory.Endpoint.Address.Uri.AbsoluteUri);
+                         return new SubmitCompletedResult(changeSet, returnValue ?? Enumerable.Empty<ChangeSetEntry>());
+                     }
+                     catch (FaultException<DomainServiceFault> fe)
+                     {
+                         throw WebDomainClient<TContract>.GetExceptionFromServiceFault(fe.Detail);
+                     }
+                 }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Invokes an operation asynchronously.
+        /// </summary>
+        /// <param name="invokeArgs">The arguments to the Invoke operation.</param>
+        /// <param name="cancellationToken"><see cref="CancellationToken"/> to be used for requesting cancellation</param>
+        /// <returns>The results returned by the invocation.</returns>
+        /// <exception cref="InvalidOperationException">The specified query does not exist.</exception>
+        protected override Task<InvokeCompletedResult> InvokeAsyncCore(InvokeArgs invokeArgs, CancellationToken cancellationToken)
+        {
+            return CallServiceOperation(invokeArgs.OperationName,
+                invokeArgs.Parameters,
+                (asyncResult) =>
+                {
+                    IEnumerable<ValidationResult> validationErrors = null;
+                    object returnValue = null;
+                    try
+                    {
+                        returnValue = EndServiceOperationCall(asyncResult, this.ChannelFactory.Endpoint.Address.Uri.AbsoluteUri);
+                    }
+                    catch (FaultException<DomainServiceFault> fe)
+                    {
+                        if (fe.Detail.OperationErrors != null)
+                        {
+                            validationErrors = fe.Detail.GetValidationErrors();
+                        }
+                        else
+                        {
+                            throw WebDomainClient<TContract>.GetExceptionFromServiceFault(fe.Detail);
+                        }
+                    }
+                    return new InvokeCompletedResult(returnValue, validationErrors ?? Enumerable.Empty<ValidationResult>());
+                },
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Calls an operation on an already constructed WCF service channel
+        /// </summary>
+        /// <typeparam name="TResult"></typeparam>
+        /// <param name="operationName">name of method/operation to call</param>
+        /// <param name="parameters">parameters for the call</param>
+        /// <param name="callback">callback responsible for casting return value and epr method error handling</param>
+        /// <param name="cancellationToken"><see cref="CancellationToken"/> to be used for requesting cancellation</param>
+        /// <returns>A <see cref="Task{TResult}"/> which will contain the result of the operation, exception or be cancelled</returns>
+        protected virtual Task<TResult> CallServiceOperation<TResult>(string operationName,
+            IDictionary<string, object> parameters,
+            Func<IAsyncResult, TResult> callback, CancellationToken cancellationToken)
+        {
+            MethodInfo beginInvokeMethod = WebDomainClient<TContract>.ResolveBeginMethod(operationName);
+            MethodInfo endInvokeMethod = WebDomainClient<TContract>.ResolveEndMethod(operationName);
+
+            var taskCompletionSource = new TaskCompletionSource<TResult>();
+            if (parameters == null) 
+            {
+                parameters = new Dictionary<string, object>(2);
+            }
+
+            // Pass async operation related parameters.
+            parameters.Add("callback", new AsyncCallback(delegate (IAsyncResult asyncResponseResult)
+            {
+                try
+                {
+                    TResult result = callback(asyncResponseResult);
+                    taskCompletionSource.SetResult(result);
+                }
+#pragma warning disable CA1031 // Do not catch general exception types, we "rethrow it via task
+                catch (CommunicationException) when (cancellationToken.IsCancellationRequested)
+                {
+                    taskCompletionSource.TrySetCanceled(cancellationToken);
+                }
+                catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
+                {
+                    taskCompletionSource.TrySetException(ex);
+                }
+            }));
+            parameters.Add("asyncState", /*userState*/endInvokeMethod);
+
+            // Call Begin** method
+            // Handle any immediate CommunicationException which can be thrown directly from begin method
+            // for some tests that perform invalid calls against localhost
+            try
+            {
+                InvokeBeginMethod(beginInvokeMethod, ChannelFactory.Endpoint.Address.Uri.AbsoluteUri, parameters);
+            }
+            catch (CommunicationException ex)
+            {
+                // We might have aborted the channel due to cancellation
+                if (cancellationToken.IsCancellationRequested)
+                    taskCompletionSource.TrySetCanceled(cancellationToken);
+                else
+                    taskCompletionSource.TrySetException(ex);
+            }
+
+            return taskCompletionSource.Task;
+        }
+
+        /// <summary>
+        /// Method to invoke to get result of invocation started by <see cref="CallServiceOperation"/>
+        /// </summary>
+        /// <param name="asyncResult">should be second parameter supplied in callback supplied to <see cref="CallServiceOperation" /> </param>
+        /// <param name="address"></param>
+        /// <returns>result of service call</returns>
+        private static object EndServiceOperationCall(IAsyncResult asyncResult, string address)
+        {
+            return InvokeEndMethod((MethodInfo)asyncResult.AsyncState, 
+                address,
+                new Dictionary<string, object> 
+                { 
+                    { "result", asyncResult } 
+                });
+        }
+
+        private static MethodInfo ResolveBeginMethod(string operationName)
+        {
+            MethodInfo m = typeof(TContract).GetMethod("Begin" + operationName);
+            if (m == null)
+            {
+                throw new MissingMethodException(string.Format(CultureInfo.CurrentCulture, Resource.WebDomainClient_OperationDoesNotExist, operationName));
+            }
+            return m;
+        }
+
+        private static MethodInfo ResolveEndMethod(string operationName)
+        {
+            MethodInfo m = typeof(TContract).GetMethod("End" + operationName);
+            if (m == null)
+            {
+                throw new MissingMethodException(string.Format(CultureInfo.CurrentCulture, Resource.WebDomainClient_OperationDoesNotExist, operationName));
+            }
+            return m;
+        }
+
+        /// <summary>
+        /// Constructs an exception based on a service fault.
+        /// </summary>
+        /// <param name="serviceFault">The fault received from a service.</param>
+        /// <returns>The constructed exception.</returns>
+        private static Exception GetExceptionFromServiceFault(DomainServiceFault serviceFault)
+        {
+            // Status was OK but there still was a server error. We need to transform
+            // the error into the appropriate client exception
+            if (serviceFault.IsDomainException)
+            {
+                return new DomainException(serviceFault.ErrorMessage, serviceFault.ErrorCode, serviceFault.StackTrace);
+            }
+            else if (serviceFault.ErrorCode == 400)
+            {
+                return new DomainOperationException(serviceFault.ErrorMessage, OperationErrorStatus.NotSupported, serviceFault.ErrorCode, serviceFault.StackTrace);
+            }
+            else if (serviceFault.ErrorCode == 401)
+            {
+                return new DomainOperationException(serviceFault.ErrorMessage, OperationErrorStatus.Unauthorized, serviceFault.ErrorCode, serviceFault.StackTrace);
+            }
+            else
+            {
+                // for anything else: map to ServerError
+                return new DomainOperationException(serviceFault.ErrorMessage, OperationErrorStatus.ServerError, serviceFault.ErrorCode, serviceFault.StackTrace);
+            }
+        }
+
+#if SILVERLIGHT
+        /// <summary>
+        /// If the service Uri is relative, this method uses the application
+        /// source to create an absolute Uri.
+        /// </summary>
+        /// <remarks>
+        /// If usesHttps in the constructor was true, the Uri will be created using
+        /// a https scheme instead.
+        /// </remarks>
+        private void ComposeAbsoluteServiceUri()
+        {
+            // if the URI is relative, compose with the source URI
+            if (!this._serviceUri.IsAbsoluteUri)
+            {
+                Application current = Application.Current;
+
+                // Only proceed if we can determine a root uri
+                if ((current == null) || (current.Host == null) || (current.Host.Source == null))
+                {
+                    throw new InvalidOperationException(OpenRiaServices.DomainServices.Client.Resource.DomainClient_UnableToDetermineHostUri);
+                }
+
+                string sourceUri = current.Host.Source.AbsoluteUri;
+                if (this.UsesHttps)
+                {
+                    // We want to replace a http scheme (everything before the ':' in a Uri) with https.
+                    // Doing this via UriBuilder loses the OriginalString. Unfortunately, this leads
+                    // the builder to include the original port in the output which is not what we want.
+                    // To stay as close to the original Uri as we can, we'll just do some simple string
+                    // replacement.
+                    //
+                    // Desired output: http://my.domain/mySite.aspx -> https://my.domain/mySite.aspx
+                    // Builder output: http://my.domain/mySite.aspx -> https://my.domain:80/mySite.aspx
+                    //   The actual port is probably 443, but including it increases the cross-domain complexity.
+                    if (sourceUri.StartsWith("http:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sourceUri = "https:" + sourceUri.Substring(5 /*("http:").Length*/);
+                    }
+                }
+
+                this._serviceUri = new Uri(new Uri(sourceUri), this._serviceUri);
+            }
+        }
+#endif
+    }
+}
