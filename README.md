@@ -58,3 +58,14 @@ Here are the most common nuget packages and their current versions.
 | OpenRiaServices.Endpoints | [![NuGet](https://img.shields.io/nuget/v/OpenRiaServices.Endpoints.svg)](https://www.nuget.org/packages/OpenRiaServices.Endpoints) | [![NuGet](https://img.shields.io/nuget/vpre/OpenRiaServices.Endpoints.svg)](https://www.nuget.org/packages/OpenRiaServices.Endpoints) |
 
 
+
+# How to create the NuGet package for the OpenSilver version of Open RIA Services client:
+
+- open the .SLN with VS 2019 and build the RELEASE configuration of the projects "OpenRiaServices.DomainServices.Client" and "OpenRiaServices.DomainServices.Client.Web"
+- place "NuGet.exe" in the parent folder of the Open RIA Services repo
+- launch PowerShell as admin
+- execute the following command to allow script execution on your machine: Set-ExecutionPolicy RemoteSigned
+- navigate with PowerShell to the "NuGet" subfolder of the Open RIA Services repo
+- run the following command (note: you may want to change the version number): .\Pack-Client-OpenSilver.ps1 -Version 5.0.0-preview0003
+- the package gets created into the "bin\opensilver" subfolder of the "NuGet" folder
+
