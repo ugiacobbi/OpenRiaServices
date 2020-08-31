@@ -167,11 +167,19 @@ namespace OpenRiaServices.DomainServices.Client.Web
                 SynchronizationContext.SetSynchronizationContext(null);
                 channelFactory.Open();
             }
+#if OPENSILVER
+            catch (Exception ex)
+            {
+                ((IDisposable)channelFactory)?.Dispose();
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+            }
+#else
             catch
             {
                 ((IDisposable)channelFactory)?.Dispose();
                 throw;
             }
+#endif
             finally
             {
                 SynchronizationContext.SetSynchronizationContext(originalSyncContext);
