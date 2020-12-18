@@ -229,7 +229,7 @@ namespace OpenRiaServices.DomainServices.Client
                     QueryResult returnValue = null;
                     try
                     {
-                        returnValue = (QueryResult)EndServiceOperationCall(asyncResult, this.ChannelFactory.Endpoint.Address.Uri.AbsoluteUri);
+                        returnValue = (QueryResult)EndServiceOperationCall(this.ChannelFactory, asyncResult);
                     }
                     catch (FaultException<DomainServiceFault> fe)
                     {
@@ -263,22 +263,24 @@ namespace OpenRiaServices.DomainServices.Client
             , cancellationToken);
         }
 
-        private static object InvokeBeginMethod(MethodInfo method, string address, IDictionary<string, object> parameters)
+        private static object InvokeBeginMethod(MethodInfo method, ChannelFactory channel, IDictionary<string, object> parameters)
         {
             return INTERNAL_WebMethodsCaller.BeginCallWebMethod<TContract>(
-                address,
+                channel.Endpoint.Address.Uri.AbsoluteUri,
                 method.Name.Substring(5), // skips "Begin"
                 null,
                 parameters,
                 "1.1");
         }
 
-        private static object InvokeEndMethod(MethodInfo method, string address, IDictionary<string, object> parameters)
+        private static object InvokeEndMethod(MethodInfo method, ChannelFactory channel, IDictionary<string, object> parameters)
         {
+            string name = method.Name.Substring(3); // skips "End" 
             return INTERNAL_WebMethodsCaller.EndCallWebMethod<TContract>(
-                address,
-                method.Name.Substring(3), // skips "End"
+                channel.Endpoint.Address.Uri.AbsoluteUri,
+                name,
                 method.ReturnType,
+                channel.Endpoint.Contract.Operations.Find(name).KnownTypes,
                 parameters,
                 "1.1");
         }
@@ -305,8 +307,7 @@ namespace OpenRiaServices.DomainServices.Client
                  {
                      try
                      {
-                         var returnValue = (IEnumerable<ChangeSetEntry>)EndServiceOperationCall(asyncResult,
-                             this.ChannelFactory.Endpoint.Address.Uri.AbsoluteUri);
+                         var returnValue = (IEnumerable<ChangeSetEntry>)EndServiceOperationCall(this.ChannelFactory, asyncResult);
                          return new SubmitCompletedResult(changeSet, returnValue ?? Enumerable.Empty<ChangeSetEntry>());
                      }
                      catch (FaultException<DomainServiceFault> fe)
@@ -333,7 +334,7 @@ namespace OpenRiaServices.DomainServices.Client
                     object returnValue = null;
                     try
                     {
-                        returnValue = EndServiceOperationCall(asyncResult, this.ChannelFactory.Endpoint.Address.Uri.AbsoluteUri);
+                        returnValue = EndServiceOperationCall(this.ChannelFactory, asyncResult);
                     }
                     catch (FaultException<DomainServiceFault> fe)
                     {
@@ -399,7 +400,7 @@ namespace OpenRiaServices.DomainServices.Client
             // for some tests that perform invalid calls against localhost
             try
             {
-                InvokeBeginMethod(beginInvokeMethod, ChannelFactory.Endpoint.Address.Uri.AbsoluteUri, parameters);
+                InvokeBeginMethod(beginInvokeMethod, ChannelFactory, parameters);
             }
             catch (CommunicationException ex)
             {
@@ -417,12 +418,12 @@ namespace OpenRiaServices.DomainServices.Client
         /// Method to invoke to get result of invocation started by <see cref="CallServiceOperation"/>
         /// </summary>
         /// <param name="asyncResult">should be second parameter supplied in callback supplied to <see cref="CallServiceOperation" /> </param>
-        /// <param name="address"></param>
+        /// <param name="channel"></param>
         /// <returns>result of service call</returns>
-        private static object EndServiceOperationCall(IAsyncResult asyncResult, string address)
+        private static object EndServiceOperationCall(ChannelFactory channel, IAsyncResult asyncResult)
         {
-            return InvokeEndMethod((MethodInfo)asyncResult.AsyncState, 
-                address,
+            return InvokeEndMethod((MethodInfo)asyncResult.AsyncState,
+                channel,
                 new Dictionary<string, object> 
                 { 
                     { "result", asyncResult } 
