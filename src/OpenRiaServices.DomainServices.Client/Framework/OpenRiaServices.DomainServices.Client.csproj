@@ -5,6 +5,7 @@
     <TargetFrameworks>net46;netstandard2.0</TargetFrameworks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <SignAssembly>false</SignAssembly>
+    <NoXamlPreprocessor>True</NoXamlPreprocessor>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-    <PackageReference Include="OpenSilver.WorkInProgress" Version="1.0.0-alpha-008" />
+    <PackageReference Include="OpenSilver.WorkInProgress" Version="1.0.0-private-2020-12-21" />
     <PackageReference Include="System.ComponentModel.Annotations" Version="4.7.0-preview1.19504.10" />
   </ItemGroup>
 
@@ -24,6 +25,10 @@
     <Reference Include="WindowsBase" />
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenSilver.WorkInProgress" Version="1.0.0-private-2020-12-21" />
   </ItemGroup>
   
   <ItemGroup>

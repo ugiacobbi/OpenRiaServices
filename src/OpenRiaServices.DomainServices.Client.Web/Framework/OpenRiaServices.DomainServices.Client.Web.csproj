@@ -7,10 +7,11 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <SignAssembly>false</SignAssembly>
+    <NoXamlPreprocessor>True</NoXamlPreprocessor>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-    <PackageReference Include="OpenSilver.WorkInProgress" Version="1.0.0-alpha-008" />
+    <PackageReference Include="OpenSilver.WorkInProgress" Version="1.0.0-private-2020-12-21" />
     <PackageReference Include="System.ServiceModel.Http" Version="4.6.0" />
   </ItemGroup>
 
