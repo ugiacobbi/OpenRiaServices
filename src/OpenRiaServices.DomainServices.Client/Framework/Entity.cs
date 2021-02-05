@@ -1103,6 +1103,30 @@ namespace OpenRiaServices.DomainServices.Client
             this._propChangedHandler?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
+#if SILVERLIGHT || OPENSILVER
+        /// <summary>
+        /// Called when an <see cref="Entity"/> property has changed.
+        /// </summary>
+        /// <param name="e">The event arguments</param>
+        protected virtual void OnPropertyChanged(PropertyChangedEventArgs e)
+        {
+            if (e == null)
+            {
+                throw new ArgumentNullException("e");
+            }
+
+            // if we're in an edit session, we want to postpone association updates
+            // until the edits are commited (EndEdit is called). Note: we only want
+            // to process association updates here when we're attached.
+            if (!this.IsEditing && this.EntitySet != null)
+            {
+                this.EntitySet.UpdateRelatedAssociations(this, e.PropertyName);
+            }
+
+            this._propChangedHandler?.Invoke(this, e);
+        }
+#endif
+
         /// <summary>
         /// Called from a property setter to notify the framework that an
         /// <see cref="Entity"/> data member has changed. This method performs 
@@ -1693,7 +1717,7 @@ namespace OpenRiaServices.DomainServices.Client
             this._setChangedCallback = (Action)Delegate.Combine(this._setChangedCallback, callback);
         }
 
-        #region Implementation of INotifyPropertyChanged
+#region Implementation of INotifyPropertyChanged
         /// <summary>
         /// Event raised whenever an <see cref="Entity"/> property has changed
         /// </summary>
@@ -1708,9 +1732,9 @@ namespace OpenRiaServices.DomainServices.Client
                 this._propChangedHandler = (PropertyChangedEventHandler)Delegate.Remove(this._propChangedHandler, value);
             }
         }
-        #endregion
+#endregion
 
-        #region IEditableObject Members
+#region IEditableObject Members
 
         /// <summary>
         /// Begin editing this entity
@@ -1738,9 +1762,9 @@ namespace OpenRiaServices.DomainServices.Client
             this.EndEdit();
         }
 
-        #endregion
+#endregion
 
-        #region IRevertibleChangeTracking Members
+#region IRevertibleChangeTracking Members
 
         /// <summary>
         /// Revert all property changes made to this entity back to their original values. This method
@@ -1754,9 +1778,9 @@ namespace OpenRiaServices.DomainServices.Client
             this.RejectChanges();
         }
 
-        #endregion
+#endregion
 
-        #region IChangeTracking Members
+#region IChangeTracking Members
 
         /// <summary>
         /// Accept all changes made to this <see cref="Entity"/>. If this <see cref="Entity"/>
@@ -1781,7 +1805,7 @@ namespace OpenRiaServices.DomainServices.Client
             }
         }
 
-        #endregion
+#endregion
 
         /// <summary>
         /// Method called after this entity has been deserialized
@@ -1823,7 +1847,7 @@ namespace OpenRiaServices.DomainServices.Client
             }
         }
 
-        #region Nested Types
+#region Nested Types
         /// <summary>
         /// Class used to manage entity edit sessions.
         /// </summary>
@@ -1967,7 +1991,7 @@ namespace OpenRiaServices.DomainServices.Client
                 this._entity.RaiseValidationErrorsChanged(propertyName);
             }
         }
-        #endregion
+#endregion
     }
 }
 

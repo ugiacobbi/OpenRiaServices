@@ -55,7 +55,7 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net46'">
     <Compile Remove="Data\WebDomainClient_OS.cs" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <ProjectReference Include="..\..\OpenRiaServices.DomainServices.Client\Framework\OpenRiaServices.DomainServices.Client.csproj" />
   </ItemGroup>
@@ -83,5 +83,9 @@
       <CustomToolNamespace>OpenRiaServices.DomainServices.Client</CustomToolNamespace>
     </EmbeddedResource>
   </ItemGroup>
- 
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <DefineConstants>$(DefineConstants);OPENSILVER</DefineConstants>
+  </PropertyGroup>
+
 </Project>

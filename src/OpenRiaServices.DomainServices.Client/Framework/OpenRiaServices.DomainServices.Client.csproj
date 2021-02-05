@@ -54,6 +54,7 @@
     <!-- Disable obsolete warning (primarily AssociationAttribute) -->
     <NoWarn>$(NoWarn);CS0618</NoWarn>
     <SignAssembly>false</SignAssembly>
+    <DefineConstants>$(DefineConstants);OPENSILVER</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net46' ">
