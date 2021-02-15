@@ -147,6 +147,14 @@
   <data name="ApplicationServices_WANoLogout" xml:space="preserve">
     <value>Windows authentication does not support logging out.</value>
   </data>
+  <data name="DomainClient_UnexpectedHttpStatusCode" xml:space="preserve">
+    <value>Unexpected server statuscode {0} '{1}'</value>
+    <comment>0 =status code as int, 1 =status code as text/enum</comment>
+  </data>
+  <data name="DomainClient_UnexpectedResultContent" xml:space="preserve">
+    <value>Unknown server response content, exptected '{0}' but was '{1}'</value>
+    <comment>0 =expected xml node, 1 = actual xml node</comment>
+  </data>
   <data name="MethodCanOnlyBeInvokedOnce" xml:space="preserve">
     <value>Method can only be invoked once.</value>
   </data>

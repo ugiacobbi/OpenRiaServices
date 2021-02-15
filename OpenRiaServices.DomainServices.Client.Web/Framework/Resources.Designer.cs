@@ -151,6 +151,24 @@ namespace OpenRiaServices.DomainServices.Client {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Unexpected server statuscode {0} &apos;{1}&apos;.
+        /// </summary>
+        internal static string DomainClient_UnexpectedHttpStatusCode {
+            get {
+                return ResourceManager.GetString("DomainClient_UnexpectedHttpStatusCode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unknown server response content, exptected &apos;{0}&apos; but was &apos;{1}&apos;.
+        /// </summary>
+        internal static string DomainClient_UnexpectedResultContent {
+            get {
+                return ResourceManager.GetString("DomainClient_UnexpectedResultContent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Method can only be invoked once..
         /// </summary>
         internal static string MethodCanOnlyBeInvokedOnce {
