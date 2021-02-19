@@ -101,7 +101,7 @@ namespace OpenRiaServices.DomainServices.Client
         /// is absolute and <paramref name="usesHttps"/> is true.
         /// </exception>
         public WebDomainClient(Uri serviceUri, bool usesHttps, WcfDomainClientFactory domainClientFactory)
-        : base(typeof(TContract), serviceUri, new HttpClientHandler())
+        : base(typeof(TContract), serviceUri, HttpClientHandlerFactory.Create())
         {
             if (serviceUri == null)
             {
