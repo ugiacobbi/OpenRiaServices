@@ -11,6 +11,8 @@ using System.ServiceModel.Description;
 using OpenRiaServices.DomainServices.Client.Web;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
+using System.IO;
 
 #if SILVERLIGHT
 using System.Windows;
@@ -30,6 +32,8 @@ namespace OpenRiaServices.DomainServices.Client
         private ChannelFactory<TContract> _channelFactory;
         private IReadOnlyList<Type> _knownTypes;
         private Uri _serviceUri;
+        private IQueryable _myQuery = null;
+        private bool _includeTotalCount = false;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WebDomainClient&lt;TContract&gt;"/> class.
@@ -221,6 +225,8 @@ namespace OpenRiaServices.DomainServices.Client
         /// <exception cref="InvalidOperationException">The specified query does not exist.</exception>
         protected override Task<QueryCompletedResult> QueryAsyncCore(EntityQuery query, CancellationToken cancellationToken)
         {
+            _myQuery = query.Query;
+            _includeTotalCount = query.IncludeTotalCount;
             return CallServiceOperation<QueryCompletedResult>(query.QueryName,
                 query.Parameters,
                 (asyncResult) =>
@@ -263,14 +269,45 @@ namespace OpenRiaServices.DomainServices.Client
             , cancellationToken);
         }
 
-        private static object InvokeBeginMethod(MethodInfo method, ChannelFactory channel, IDictionary<string, object> parameters)
+        private object InvokeBeginMethod(MethodInfo method, ChannelFactory channel, IDictionary<string, object> parameters)
         {
+            IEnumerable<MessageHeader> headers = null;
+            if (_myQuery != null)
+            {
+                var queryParts = QuerySerializer.Serialize(_myQuery);
+                var header = new Web.Internal.WcfQueryHeaderInspector.QueryOptionsHeader(queryParts, _includeTotalCount);
+                headers = new MessageHeader[] { header };
+            }
+
             return INTERNAL_WebMethodsCaller.BeginCallWebMethod<TContract>(
                 channel.Endpoint.Address.Uri.AbsoluteUri,
                 method.Name.Substring(5), // skips "Begin"
                 null,
+                GetEnvelopeHeaders(headers?.ToList()),
                 parameters,
                 "1.1");
+        }
+
+        private string GetEnvelopeHeaders(ICollection<MessageHeader> messageHeaders)
+        {
+            if (messageHeaders == null || !messageHeaders.Any())
+            {
+                return "";
+            }
+
+            var settings = new XmlWriterSettings { OmitXmlDeclaration = true };
+
+            return string.Join("", messageHeaders.Select(mh =>
+            {
+                using (var sw = new StringWriter())
+                using (var xw = XmlWriter.Create(sw, settings))
+                {
+                    mh.WriteHeader(xw, MessageVersion.Default);
+
+                    xw.Flush();
+                    return sw.ToString();
+                }
+            }));
         }
 
         private static object InvokeEndMethod(MethodInfo method, ChannelFactory channel, IDictionary<string, object> parameters)
@@ -280,7 +317,7 @@ namespace OpenRiaServices.DomainServices.Client
                 channel.Endpoint.Address.Uri.AbsoluteUri,
                 name,
                 method.ReturnType,
-                channel.Endpoint.Contract.Operations.Find(name).KnownTypes,
+                //channel.Endpoint.Contract.Operations.Find(name).KnownTypes,
                 parameters,
                 "1.1");
         }
