@@ -4,15 +4,24 @@ using System.Runtime.InteropServices;
 
 namespace OpenRiaServices.DomainServices.Client
 {
-    class HttpClientHandlerFactory
+    /// <summary>
+    /// The factory for creating HttpClientHandler
+    /// </summary>
+    public class HttpClientHandlerFactory
     {
-        private static CookieContainer SharedCookieContainer { get; }
+        /// <summary>
+        /// This cookie container is shared between calls for http calls except for the browser
+        /// </summary>
+        public static CookieContainer SharedCookieContainer { get; }
 
         static HttpClientHandlerFactory()
         {
             SharedCookieContainer = new CookieContainer();
         }
 
+        /// <summary>
+        /// Creates a new HttpClientHandler.
+        /// </summary>
         public static HttpClientHandler Create()
         {
             bool isBrowser = RuntimeInformation.IsOSPlatform(OSPlatform.Create("BROWSER"));
