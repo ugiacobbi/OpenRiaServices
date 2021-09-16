@@ -36,7 +36,7 @@ namespace OpenRiaServices.DomainServices.Client.Web
             _createInstanceMethod = typeof(WcfDomainClientFactory).GetMethod(nameof(CreateInstance), BindingFlags.NonPublic | BindingFlags.Instance);
 
             // Silverlight uses the browser's cookies by default, in which case we should not manage cookies manually
-#if SILVERLIGHT
+#if SILVERLIGHT && !OPENSILVER
             CookieContainer = null;
 #else
             CookieContainer = new CookieContainer();

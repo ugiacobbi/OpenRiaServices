@@ -36,7 +36,7 @@ namespace OpenRiaServices.DomainServices.Client.Web
 
             try
             {
-#if SILVERLIGHT
+#if SILVERLIGHT && !OPENSILVER
                 factory.Endpoint.Behaviors.Add(_soapBehavior);
 #else
                 factory.Endpoint.EndpointBehaviors.Add(_soapBehavior);
@@ -81,7 +81,7 @@ namespace OpenRiaServices.DomainServices.Client.Web
             }
 
             binding.MaxReceivedMessageSize = int.MaxValue;
-#if SILVERLIGHT
+#if SILVERLIGHT && !OPENSILVER
             binding.EnableHttpCookieContainer =  CookieContainer != null;
 #else
             binding.AllowCookies = CookieContainer != null;
