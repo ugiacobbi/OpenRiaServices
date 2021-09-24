@@ -317,7 +317,7 @@ namespace OpenRiaServices.DomainServices.Client
                 channel.Endpoint.Address.Uri.AbsoluteUri,
                 name,
                 method.ReturnType,
-                //channel.Endpoint.Contract.Operations.Find(name).KnownTypes,
+                channel.Endpoint.Contract.Operations.Find(name).KnownTypes,
                 parameters,
                 "1.1");
         }
