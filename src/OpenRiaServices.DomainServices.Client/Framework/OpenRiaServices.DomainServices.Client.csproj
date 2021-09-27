@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-      <PackageReference Include="OpenSilver" Version="1.0.0-beta.1.22" />
-    <PackageReference Include="System.ComponentModel.Annotations" Version="4.7.0-preview1.19504.10" />
+    <PackageReference Include="OpenSilver" Version="1.0.0-beta.1.22" />
+    <PackageReference Include="System.ComponentModel.Annotations" Version="4.7.0" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net46' ">
@@ -25,7 +25,7 @@
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <Compile Update="Resource.Designer.cs">
       <DesignTime>True</DesignTime>
