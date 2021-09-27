@@ -46,7 +46,7 @@ namespace OpenRiaServices.DomainServices.Client.Web.Internal
         /// <param name="clientRuntime">The client runtime to be customized.</param>
         void IEndpointBehavior.ApplyClientBehavior(ServiceEndpoint endpoint, ClientRuntime clientRuntime)
         {
-#if SILVERLIGHT
+#if SILVERLIGHT && !OPENSILVER
             var inspectors = clientRuntime.MessageInspectors;
 #else
             var inspectors = clientRuntime.ClientMessageInspectors;

@@ -534,7 +534,7 @@ namespace OpenRiaServices.DomainServices.Client
                 // Only proceed if we can determine a root uri
                 if ((current == null) || (current.Host == null) || (current.Host.Source == null))
                 {
-                    throw new InvalidOperationException(OpenRiaServices.DomainServices.Client.Resource.DomainClient_UnableToDetermineHostUri);
+                    throw new InvalidOperationException(OpenRiaServices.DomainServices.Client.Web.Resource.DomainClient_UnableToDetermineHostUri);
                 }
 
                 string sourceUri = current.Host.Source.AbsoluteUri;

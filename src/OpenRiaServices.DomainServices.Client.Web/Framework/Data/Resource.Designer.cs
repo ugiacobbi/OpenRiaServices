@@ -61,6 +61,15 @@ namespace OpenRiaServices.DomainServices.Client.Web {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The current application or application host is null and the host URI cannot be determined..
+        /// </summary>
+        internal static string DomainClient_UnableToDetermineHostUri {
+            get {
+                return ResourceManager.GetString("DomainClient_UnableToDetermineHostUri", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The PoxBinaryMessageEncoder only supports content type {0}..
         /// </summary>
         internal static string PoxBinaryMessageEncoder_InvalidContentType {
