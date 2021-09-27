@@ -1,6 +1,6 @@
 param(
     [string]$Path = ".",
-	[string[]]$Include =  @("OpenRiaServices.OpenSilver.Client.Core.nuspec", "OpenRiaServices.OpenSilver.Client.nuspec"),
+	[string[]]$Include =  @("OpenSilver.OpenRiaServices.Client.Core.nuspec", "OpenSilver.OpenRiaServices.Client.nuspec"),
 	[string]$Version = $null,
 	[string]$NuGetPath
 )
