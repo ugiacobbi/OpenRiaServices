@@ -16,7 +16,7 @@
     <tags>WCF RIA Services RIAServices OpenRiaServices OpenSilver Silverlight</tags>
     <dependencies>
       <group>
-        <dependency id="OpenSilver" version="1.0.0-beta.1.22" />
+        <dependency id="OpenSilver" version="1.0.0" />
         <dependency id="OpenSilver.OpenRiaServices.Client.Core" version="$version$"/>
         <dependency id="OpenRiaServices.Client.CodeGen" version="5.0.0-preview0003"/>
       </group>
