@@ -40,11 +40,7 @@ namespace OpenRiaServices.DomainServices.Client.Web.Data
         // http://msdn2.microsoft.com/en-us/library/bb412172.aspx
         public static bool CanConvert(Type type)
         {
-#if PORTABLE 
             switch (Type.GetTypeCode (type))
-#else
-            switch (Convert.GetTypeCode(type))
-#endif
             {
                 case TypeCode.Empty:
                 case (TypeCode)2: // DBNull
@@ -81,7 +77,7 @@ namespace OpenRiaServices.DomainServices.Client.Web.Data
 
             if (!CanConvert(parameterType))
                 throw new NotSupportedException(String.Format("Conversion from the argument parameterType '{0}' is not supported", parameterType));
-
+            
             if (parameter is IFormattable)
                 ((IFormattable)parameter).ToString(null, CultureInfo.InvariantCulture);
             return parameter.ToString();
